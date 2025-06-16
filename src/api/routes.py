@@ -8,6 +8,7 @@ from flask_cors import CORS
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
 from datetime import datetime
 import json
+import traceback
 
 api = Blueprint('api', __name__)
 
@@ -88,30 +89,64 @@ def get_files():
 @api.route('/files', methods=['POST'])
 @jwt_required()
 def create_file():
-    current_user_id = get_jwt_identity()
-    
-    data = request.json
-    if not data.get('name'):
-        return jsonify({"msg": "File name is required"}), 400
+    print("=== CREATE FILE ROUTE CALLED ===")
     
     try:
+        current_user_id = get_jwt_identity()
+        print(f"Current user ID: {current_user_id}")
+        
+        # Debug the raw request
+        print(f"Request method: {request.method}")
+        print(f"Request headers: {dict(request.headers)}")
+        print(f"Request content type: {request.content_type}")
+        print(f"Request data: {request.data}")
+        
+        # Try to get JSON data
+        try:
+            data = request.json
+            print(f"Parsed JSON data: {data}")
+            print(f"Data type: {type(data)}")
+        except Exception as e:
+            print(f"Error parsing JSON: {e}")
+            return jsonify({"msg": f"JSON parsing error: {str(e)}"}), 400
+        
+        if not data:
+            print("No JSON data received")
+            return jsonify({"msg": "No JSON data received"}), 400
+            
+        if not data.get('name'):
+            print("No name provided")
+            return jsonify({"msg": "File name is required"}), 400
+        
+        print(f"File name: {data.get('name')}")
+        print(f"Description: {data.get('description')}")
+        print(f"Content: {data.get('content')}")
+        print(f"Content type: {type(data.get('content'))}")
+        
         content = data.get('content', '[]')
         
         # Handle content - it should be a string (JSON string from frontend)
         if isinstance(content, str):
+            print("Content is string, validating JSON...")
             # Validate that the string can be parsed as JSON
             try:
                 json.loads(content)
                 content_to_store = content  # Store the JSON string directly
-            except json.JSONDecodeError:
+                print("Content validated as valid JSON string")
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error: {e}")
                 return jsonify({"msg": "Content must be a valid JSON string"}), 422
         else:
+            print("Content is not string, converting to JSON...")
             # If content is an array/object, convert it to JSON string
             try:
                 content_to_store = json.dumps(content)
-            except TypeError:
+                print(f"Content converted to JSON string: {content_to_store}")
+            except TypeError as e:
+                print(f"JSON dumps error: {e}")
                 return jsonify({"msg": "Content must be JSON serializable"}), 422
             
+        print("Creating new ExcelFile object...")
         new_file = ExcelFile(
             name=data['name'],
             description=data.get('description', ''),
@@ -119,13 +154,17 @@ def create_file():
             user_id=current_user_id
         )
         
+        print("Adding to database...")
         db.session.add(new_file)
         db.session.commit()
+        print("File saved successfully")
         
         return jsonify(new_file.serialize()), 201
         
     except Exception as e:
-        return jsonify({"msg": str(e)}), 422
+        print(f"Unexpected error: {e}")
+        print(f"Traceback: {traceback.format_exc()}")
+        return jsonify({"msg": f"Unexpected error: {str(e)}"}), 500
 
 @api.route('/files/<int:id>', methods=['GET'])
 @jwt_required()
@@ -141,36 +180,71 @@ def get_file(id):
 @api.route('/files/<int:id>', methods=['PUT'])
 @jwt_required()
 def update_file(id):
-    current_user_id = get_jwt_identity()
-    file = ExcelFile.query.filter_by(id=id, user_id=current_user_id).first()
+    print(f"=== UPDATE FILE ROUTE CALLED for ID: {id} ===")
     
-    if not file:
-        return jsonify({"msg": "File not found"}), 404
+    try:
+        current_user_id = get_jwt_identity()
+        print(f"Current user ID: {current_user_id}")
         
-    data = request.json
-    if 'name' in data:
-        file.name = data['name']
-    if 'description' in data:
-        file.description = data['description']
-    if 'content' in data:
-        content = data['content']
-        # Handle content consistently with POST route
-        if isinstance(content, str):
-            # Validate that the string can be parsed as JSON
-            try:
-                json.loads(content)
-                file.content = content  # Store the JSON string directly
-            except json.JSONDecodeError:
-                return jsonify({"msg": "Content must be a valid JSON string"}), 422
-        else:
-            # If content is an array/object, convert it to JSON string
-            try:
-                file.content = json.dumps(content)
-            except TypeError:
-                return jsonify({"msg": "Content must be JSON serializable"}), 422
-    
-    db.session.commit()
-    return jsonify(file.serialize()), 200
+        file = ExcelFile.query.filter_by(id=id, user_id=current_user_id).first()
+        
+        if not file:
+            print("File not found")
+            return jsonify({"msg": "File not found"}), 404
+        
+        # Debug the raw request
+        print(f"Request method: {request.method}")
+        print(f"Request headers: {dict(request.headers)}")
+        print(f"Request content type: {request.content_type}")
+        print(f"Request data: {request.data}")
+        
+        try:
+            data = request.json
+            print(f"Parsed JSON data: {data}")
+        except Exception as e:
+            print(f"Error parsing JSON: {e}")
+            return jsonify({"msg": f"JSON parsing error: {str(e)}"}), 400
+            
+        if 'name' in data:
+            print(f"Updating name: {data['name']}")
+            file.name = data['name']
+        if 'description' in data:
+            print(f"Updating description: {data['description']}")
+            file.description = data['description']
+        if 'content' in data:
+            print(f"Updating content: {data['content']}")
+            print(f"Content type: {type(data['content'])}")
+            content = data['content']
+            # Handle content consistently with POST route
+            if isinstance(content, str):
+                print("Content is string, validating JSON...")
+                # Validate that the string can be parsed as JSON
+                try:
+                    json.loads(content)
+                    file.content = content  # Store the JSON string directly
+                    print("Content validated and stored")
+                except json.JSONDecodeError as e:
+                    print(f"JSON decode error: {e}")
+                    return jsonify({"msg": "Content must be a valid JSON string"}), 422
+            else:
+                print("Content is not string, converting to JSON...")
+                # If content is an array/object, convert it to JSON string
+                try:
+                    file.content = json.dumps(content)
+                    print("Content converted and stored")
+                except TypeError as e:
+                    print(f"JSON dumps error: {e}")
+                    return jsonify({"msg": "Content must be JSON serializable"}), 422
+        
+        print("Committing changes...")
+        db.session.commit()
+        print("File updated successfully")
+        return jsonify(file.serialize()), 200
+        
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        print(f"Traceback: {traceback.format_exc()}")
+        return jsonify({"msg": f"Unexpected error: {str(e)}"}), 500
 
 @api.route('/files/<int:id>', methods=['DELETE'])
 @jwt_required()

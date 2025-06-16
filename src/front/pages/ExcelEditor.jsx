@@ -89,11 +89,23 @@ export const ExcelEditor = () => {
                 })
             );
 
+            const requestBody = {
+                name: String(name),
+                description: String(description),
+                content: JSON.stringify(cleanData) // Send as JSON string
+            };
+
+            // Debug logging
+            console.log("Request body:", requestBody);
+            console.log("Request body JSON:", JSON.stringify(requestBody));
+
             const url = isNewFile
                 ? `${import.meta.env.VITE_BACKEND_URL}/api/files`
                 : `${import.meta.env.VITE_BACKEND_URL}/api/files/${id}`;
 
             const method = isNewFile ? "POST" : "PUT";
+
+            console.log(`Making ${method} request to:`, url);
 
             const response = await fetch(url, {
                 method,
@@ -101,21 +113,32 @@ export const ExcelEditor = () => {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${store.auth.token}`
                 },
-                body: JSON.stringify({
-                    name,
-                    description,
-                    content: cleanData // The backend will handle JSON stringification
-                })
+                body: JSON.stringify(requestBody)
             });
 
+            console.log("Response status:", response.status);
+            console.log("Response headers:", response.headers);
+
+            const responseText = await response.text();
+            console.log("Raw response:", responseText);
+
+            let errorData;
+            try {
+                errorData = JSON.parse(responseText);
+            } catch (e) {
+                console.error("Failed to parse response as JSON:", e);
+                throw new Error(`Server returned: ${responseText}`);
+            }
+
             if (!response.ok) {
-                const errorData = await response.json();
+                console.error("Request failed:", errorData);
                 throw new Error(errorData.msg || "Failed to save file");
             }
 
             navigate("/dashboard");
 
         } catch (error) {
+            console.error("Save error:", error);
             dispatch({
                 type: "files/setError",
                 payload: error.message || "Failed to save file. Please try again."
@@ -199,7 +222,20 @@ export const ExcelEditor = () => {
                         Save
                     </button>
                 </div>
+                <div className="col-auto">
+                    <button
+                        className="btn btn-info"
+                        onClick={() => {
+                            console.log("Current data:", hotRef.current?.hotInstance?.getData());
+                            console.log("Name:", name);
+                            console.log("Description:", description);
+                            console.log("Auth token:", store.auth.token);
+                        }}
+                    >
+                        Debug Info
+                    </button>
+                </div>
             </div>
         </div>
     );
-}; 
+};
