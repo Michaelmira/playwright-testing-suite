@@ -93,18 +93,26 @@ def create_file():
     data = request.json
     if not data.get('name'):
         return jsonify({"msg": "File name is required"}), 400
+    
+    try:
+        content = data.get('content', [])
+        if not isinstance(content, list):
+            return jsonify({"msg": "Content must be an array"}), 422
+            
+        new_file = ExcelFile(
+            name=data['name'],
+            description=data.get('description', ''),
+            content=json.dumps(content),
+            user_id=current_user_id
+        )
         
-    new_file = ExcelFile(
-        name=data['name'],
-        description=data.get('description', ''),
-        content=json.dumps(data.get('content', {})),
-        user_id=current_user_id
-    )
-    
-    db.session.add(new_file)
-    db.session.commit()
-    
-    return jsonify(new_file.serialize()), 201
+        db.session.add(new_file)
+        db.session.commit()
+        
+        return jsonify(new_file.serialize()), 201
+        
+    except Exception as e:
+        return jsonify({"msg": str(e)}), 422
 
 @api.route('/files/<int:id>', methods=['GET'])
 @jwt_required()

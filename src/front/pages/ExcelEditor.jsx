@@ -70,9 +70,14 @@ export const ExcelEditor = () => {
             return;
         }
 
-        const currentData = hotRef.current.hotInstance.getData();
-
         try {
+            const currentData = hotRef.current.hotInstance.getData();
+
+            // Ensure data is a 2D array and clean empty rows
+            const cleanData = currentData.map(row =>
+                row.map(cell => cell === null ? '' : String(cell))
+            );
+
             const url = isNewFile
                 ? `${import.meta.env.VITE_BACKEND_URL}/api/files`
                 : `${import.meta.env.VITE_BACKEND_URL}/api/files/${id}`;
@@ -88,12 +93,13 @@ export const ExcelEditor = () => {
                 body: JSON.stringify({
                     name,
                     description,
-                    content: currentData
+                    content: cleanData
                 })
             });
 
             if (!response.ok) {
-                throw new Error("Failed to save file");
+                const errorData = await response.json();
+                throw new Error(errorData.msg || "Failed to save file");
             }
 
             navigate("/dashboard");
@@ -101,7 +107,7 @@ export const ExcelEditor = () => {
         } catch (error) {
             dispatch({
                 type: "files/setError",
-                payload: "Failed to save file. Please try again."
+                payload: error.message || "Failed to save file. Please try again."
             });
         }
     };
