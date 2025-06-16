@@ -1,51 +1,127 @@
-import React, { useEffect } from "react"
-import rigoImageUrl from "../assets/img/rigo-baby.jpg";
-import useGlobalReducer from "../hooks/useGlobalReducer.jsx";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import useGlobalReducer from "../hooks/useGlobalReducer";
 
 export const Home = () => {
+	const navigate = useNavigate();
+	const { store, dispatch } = useGlobalReducer();
+	const [email, setEmail] = useState("");
+	const [password, setPassword] = useState("");
+	const [formErrors, setFormErrors] = useState({});
 
-	const { store, dispatch } = useGlobalReducer()
+	// If already authenticated, redirect to dashboard
+	useEffect(() => {
+		if (store.auth.isAuthenticated) {
+			navigate("/dashboard");
+		}
+	}, [store.auth.isAuthenticated, navigate]);
 
-	const loadMessage = async () => {
+	const validateForm = () => {
+		const errors = {};
+		if (!email) errors.email = "Email is required";
+		if (!password) errors.password = "Password is required";
+		setFormErrors(errors);
+		return Object.keys(errors).length === 0;
+	};
+
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+
+		// Clear previous errors
+		dispatch({ type: "auth/setError", payload: null });
+
+		// Validate form
+		if (!validateForm()) return;
+
 		try {
-			const backendUrl = import.meta.env.VITE_BACKEND_URL
+			const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/login`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ email, password }),
+			});
 
-			if (!backendUrl) throw new Error("VITE_BACKEND_URL is not defined in .env file")
+			const data = await response.json();
 
-			const response = await fetch(backendUrl + "/api/hello")
-			const data = await response.json()
+			if (!response.ok) {
+				dispatch({ type: "auth/setError", payload: data.msg });
+				return;
+			}
 
-			if (response.ok) dispatch({ type: "set_hello", payload: data.message })
-
-			return data
+			// Login successful
+			dispatch({ type: "auth/login", payload: data });
+			navigate("/dashboard");
 
 		} catch (error) {
-			if (error.message) throw new Error(
-				`Could not fetch the message from the backend.
-				Please check if the backend is running and the backend port is public.`
-			);
+			dispatch({
+				type: "auth/setError",
+				payload: "An error occurred while trying to log in. Please try again."
+			});
 		}
-
-	}
-
-	useEffect(() => {
-		loadMessage()
-	}, [])
+	};
 
 	return (
-		<div className="text-center mt-5">
-			<h1 className="display-4">Hello Rigo!!</h1>
-			<p className="lead">
-				<img src={rigoImageUrl} className="img-fluid rounded-circle mb-3" alt="Rigo Baby" />
-			</p>
-			<div className="alert alert-info">
-				{store.message ? (
-					<span>{store.message}</span>
-				) : (
-					<span className="text-danger">
-						Loading message from the backend (make sure your python 🐍 backend is running)...
-					</span>
-				)}
+		<div className="container mt-5">
+			<div className="row justify-content-center">
+				<div className="col-md-6">
+					<div className="card">
+						<div className="card-body">
+							<h2 className="text-center mb-4">Login</h2>
+
+							{/* Show backend error if any */}
+							{store.auth.error && (
+								<div className="alert alert-danger" role="alert">
+									{store.auth.error}
+								</div>
+							)}
+
+							<form onSubmit={handleSubmit}>
+								<div className="mb-3">
+									<label htmlFor="email" className="form-label">
+										Email
+									</label>
+									<input
+										type="email"
+										className={`form-control ${formErrors.email ? 'is-invalid' : ''}`}
+										id="email"
+										value={email}
+										onChange={(e) => setEmail(e.target.value)}
+										data-testid="email-input"
+									/>
+									{formErrors.email && (
+										<div className="invalid-feedback" data-testid="email-error">
+											{formErrors.email}
+										</div>
+									)}
+								</div>
+
+								<div className="mb-3">
+									<label htmlFor="password" className="form-label">
+										Password
+									</label>
+									<input
+										type="password"
+										className={`form-control ${formErrors.password ? 'is-invalid' : ''}`}
+										id="password"
+										value={password}
+										onChange={(e) => setPassword(e.target.value)}
+										data-testid="password-input"
+									/>
+									{formErrors.password && (
+										<div className="invalid-feedback" data-testid="password-error">
+											{formErrors.password}
+										</div>
+									)}
+								</div>
+
+								<button type="submit" className="btn btn-primary w-100" data-testid="login-button">
+									Login
+								</button>
+							</form>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 	);
