@@ -95,14 +95,21 @@ def create_file():
         return jsonify({"msg": "File name is required"}), 400
     
     try:
-        content = data.get('content', [])
-        if not isinstance(content, list):
-            return jsonify({"msg": "Content must be an array"}), 422
+        content = data.get('content', '[]')
+        # Validate that content is a string
+        if not isinstance(content, str):
+            return jsonify({"msg": "Content must be a JSON string"}), 422
+            
+        # Validate that the string can be parsed as JSON array
+        try:
+            json.loads(content)
+        except json.JSONDecodeError:
+            return jsonify({"msg": "Content must be a valid JSON string"}), 422
             
         new_file = ExcelFile(
             name=data['name'],
             description=data.get('description', ''),
-            content=json.dumps(content),
+            content=content,  # Store the JSON string directly
             user_id=current_user_id
         )
         

@@ -78,6 +78,9 @@ export const ExcelEditor = () => {
                 row.map(cell => cell === null ? '' : String(cell))
             );
 
+            // Convert the data to a JSON string
+            const contentString = JSON.stringify(cleanData);
+
             const url = isNewFile
                 ? `${import.meta.env.VITE_BACKEND_URL}/api/files`
                 : `${import.meta.env.VITE_BACKEND_URL}/api/files/${id}`;
@@ -93,7 +96,7 @@ export const ExcelEditor = () => {
                 body: JSON.stringify({
                     name,
                     description,
-                    content: cleanData
+                    content: contentString
                 })
             });
 
