@@ -96,20 +96,26 @@ def create_file():
     
     try:
         content = data.get('content', '[]')
-        # Validate that content is a string
-        if not isinstance(content, str):
-            return jsonify({"msg": "Content must be a JSON string"}), 422
-            
-        # Validate that the string can be parsed as JSON array
-        try:
-            json.loads(content)
-        except json.JSONDecodeError:
-            return jsonify({"msg": "Content must be a valid JSON string"}), 422
+        
+        # Handle content - it should be a string (JSON string from frontend)
+        if isinstance(content, str):
+            # Validate that the string can be parsed as JSON
+            try:
+                json.loads(content)
+                content_to_store = content  # Store the JSON string directly
+            except json.JSONDecodeError:
+                return jsonify({"msg": "Content must be a valid JSON string"}), 422
+        else:
+            # If content is an array/object, convert it to JSON string
+            try:
+                content_to_store = json.dumps(content)
+            except TypeError:
+                return jsonify({"msg": "Content must be JSON serializable"}), 422
             
         new_file = ExcelFile(
             name=data['name'],
             description=data.get('description', ''),
-            content=content,  # Store the JSON string directly
+            content=content_to_store,
             user_id=current_user_id
         )
         
@@ -147,7 +153,21 @@ def update_file(id):
     if 'description' in data:
         file.description = data['description']
     if 'content' in data:
-        file.content = json.dumps(data['content'])
+        content = data['content']
+        # Handle content consistently with POST route
+        if isinstance(content, str):
+            # Validate that the string can be parsed as JSON
+            try:
+                json.loads(content)
+                file.content = content  # Store the JSON string directly
+            except json.JSONDecodeError:
+                return jsonify({"msg": "Content must be a valid JSON string"}), 422
+        else:
+            # If content is an array/object, convert it to JSON string
+            try:
+                file.content = json.dumps(content)
+            except TypeError:
+                return jsonify({"msg": "Content must be JSON serializable"}), 422
     
     db.session.commit()
     return jsonify(file.serialize()), 200

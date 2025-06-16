@@ -50,7 +50,15 @@ export const ExcelEditor = () => {
             const file = await response.json();
             setName(file.name);
             setDescription(file.description);
-            setData(JSON.parse(file.content));
+
+            // Parse the content string into array data
+            try {
+                const parsedContent = JSON.parse(file.content);
+                setData(Array.isArray(parsedContent) ? parsedContent : []);
+            } catch (e) {
+                console.error("Error parsing file content:", e);
+                setData([]);
+            }
 
         } catch (error) {
             dispatch({
@@ -73,13 +81,13 @@ export const ExcelEditor = () => {
         try {
             const currentData = hotRef.current.hotInstance.getData();
 
-            // Ensure data is a 2D array and clean empty rows
+            // Clean the data and ensure all cells are strings
             const cleanData = currentData.map(row =>
-                row.map(cell => cell === null ? '' : String(cell))
+                row.map(cell => {
+                    if (cell === null || cell === undefined) return '';
+                    return String(cell);
+                })
             );
-
-            // Convert the data to a JSON string
-            const contentString = JSON.stringify(cleanData);
 
             const url = isNewFile
                 ? `${import.meta.env.VITE_BACKEND_URL}/api/files`
@@ -96,7 +104,7 @@ export const ExcelEditor = () => {
                 body: JSON.stringify({
                     name,
                     description,
-                    content: contentString
+                    content: cleanData // The backend will handle JSON stringification
                 })
             });
 
