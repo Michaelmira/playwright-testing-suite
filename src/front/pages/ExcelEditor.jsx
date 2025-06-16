@@ -14,7 +14,7 @@ export const ExcelEditor = () => {
     const { store, dispatch } = useGlobalReducer();
     const isNewFile = id === 'new';
 
-    const [name, setName] = useState("");
+    const [name, setName] = useState(isNewFile ? "default" : "");
     const [description, setDescription] = useState("");
     const [data, setData] = useState([
         ['', '', '', '', ''],
@@ -130,6 +130,7 @@ export const ExcelEditor = () => {
                             id="name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
+                            placeholder="Enter file name"
                             data-testid="file-name-input"
                         />
                     </div>
@@ -143,6 +144,7 @@ export const ExcelEditor = () => {
                             id="description"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Enter file description (optional)"
                             data-testid="file-description-input"
                         />
                     </div>
