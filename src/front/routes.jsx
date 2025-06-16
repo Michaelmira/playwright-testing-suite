@@ -13,6 +13,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Dashboard } from "./pages/Dashboard";
 import { ExcelEditor } from "./pages/ExcelEditor";
 
+// Create router with future flags enabled
 export const router = createBrowserRouter(
   createRoutesFromElements(
     // CreateRoutesFromElements function allows you to build route elements declaratively.
@@ -35,5 +36,11 @@ export const router = createBrowserRouter(
         <Route path="/excel/:id" element={<ExcelEditor />} />
       </Route>
     </Route>
-  )
+  ),
+  {
+    future: {
+      v7_startTransition: true,
+      v7_relativeSplatPath: true
+    }
+  }
 );

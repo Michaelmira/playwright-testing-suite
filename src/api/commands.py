@@ -1,4 +1,3 @@
-
 import click
 from api.models import db, User
 
@@ -21,13 +20,26 @@ def setup_commands(app):
         for x in range(1, int(count) + 1):
             user = User()
             user.email = "test_user" + str(x) + "@test.com"
-            user.password = "123456"
+            user.set_password("123456")  # Using set_password to properly hash
             user.is_active = True
             db.session.add(user)
-            db.session.commit()
-            print("User: ", user.email, " created.")
+            print("test_user" + str(x) + "@test.com created.")
 
-        print("All test users created")
+        db.session.commit()
+        print("Users created successfully!")
+
+    @app.cli.command("create-admin")
+    def create_admin():
+        """Create an admin user"""
+        user = User()
+        user.email = "admin@example.com"
+        user.set_password("admin123")  # This will be properly hashed
+        user.is_active = True
+        db.session.add(user)
+        db.session.commit()
+        print("Admin user created successfully!")
+        print("Email: admin@example.com")
+        print("Password: admin123")
 
     @app.cli.command("insert-test-data")
     def insert_test_data():

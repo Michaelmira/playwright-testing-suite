@@ -14,6 +14,36 @@ api = Blueprint('api', __name__)
 # Allow CORS requests to this API
 CORS(api)
 
+@api.route('/signup', methods=['POST'])
+def signup():
+    email = request.json.get("email", None)
+    password = request.json.get("password", None)
+
+    if not email:
+        return jsonify({"msg": "Email is required"}), 400
+    if not password:
+        return jsonify({"msg": "Password is required"}), 400
+
+    # Check if user already exists
+    if User.query.filter_by(email=email).first():
+        return jsonify({"msg": "Email already registered"}), 400
+
+    # Create new user
+    user = User()
+    user.email = email
+    user.set_password(password)
+    user.is_active = True
+
+    db.session.add(user)
+    db.session.commit()
+
+    # Generate access token
+    access_token = create_access_token(identity=user.id)
+    return jsonify({
+        "token": access_token,
+        "user": user.serialize()
+    }), 201
+
 @api.route('/login', methods=['POST'])
 def login():
     email = request.json.get("email", None)
